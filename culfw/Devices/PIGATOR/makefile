@@ -1,82 +1,61 @@
-MCU = at90usb1286
-#MCU = at90usb646
+MCU = atmega1284p
 BOARD  =
 F_CPU = 8000000
 FORMAT = ihex
-TARGET = CUN
-
+TARGET = CSM
 OBJDIR = .
 
-SRC = $(TARGET).c                                                  \
-		../../clib/Descriptors.c                              \
-		../../clib/cc1100.c                                   \
-		../../clib/cc1101_pllcheck.c                          \
-		../../clib/cdcLUFA.c                                  \
-		../../clib/clock.c                                    \
-		../../clib/delay.c                                    \
-		../../clib/display.c                                  \
-		../../clib/stringfunc.c                               \
-		../../clib/fncollection.c                             \
-		../../clib/memory.c                                   \
-		../../clib/ringbuffer.c                               \
-		../../clib/fband.c                                    \
-		../../clib/rf_send.c                                  \
-		../../clib/rf_receive.c                               \
-		../../clib/rf_asksin.c                                \
-		../../clib/fht.c                                      \
-		../../clib/df.c                                       \
-		../../clib/qfs.c                                      \
-		../../clib/fswrapper.c                                \
-		../../clib/fastrf.c                                   \
-		../../clib/rf_router.c                                \
-		../../clib/log.c                                      \
-		../../clib/ttydata.c                                  \
-		../../clib/spi.c                                      \
-		../../clib/cctemp.c                                   \
-		../../clib/adcw.c                                     \
-		../../clib/ethernet.c                                 \
-		../../clib/tcplink.c                                  \
-		../../avr-uip/drivers/enc28j60/enc28j60.c             \
-		../../avr-uip/drivers/enc28j60/network.c              \
-		../../avr-uip/uip/uip.c                               \
-		../../avr-uip/uip/uip_arp.c                           \
-		../../avr-uip/uip/uiplib.c                            \
-		../../avr-uip/uip/psock.c                             \
-		../../avr-uip/uip/timer.c                             \
-		../../avr-uip/uip/uip-neighbor.c                      \
-		../../avr-uip/apps/dhcpc/dhcpc.c                      \
-		../../clib/ntp.c                                      \
-		../../lufa/Drivers/USB/LowLevel/DevChapter9.c         \
-		../../lufa/Drivers/USB/LowLevel/Endpoint.c            \
-		../../lufa/Drivers/USB/LowLevel/Host.c                \
-		../../lufa/Drivers/USB/LowLevel/HostChapter9.c        \
-		../../lufa/Drivers/USB/LowLevel/LowLevel.c            \
-		../../lufa/Drivers/USB/LowLevel/Pipe.c                \
-		../../lufa/Drivers/USB/HighLevel/Events.c             \
-		../../lufa/Drivers/USB/HighLevel/USBInterrupt.c       \
-		../../lufa/Drivers/USB/HighLevel/USBTask.c            \
-		../../lufa/Drivers/USB/HighLevel/ConfigDescriptor.c   \
+SRC = 		../COC/COC.c                                         \
+		../../clib/cc1100.c                                  \
+		../../clib/cc1101_pllcheck.c                         \
+		../../clib/clock.c                                   \
+		../../clib/delay.c                                   \
+		../../clib/display.c                                 \
+		../../clib/stringfunc.c                              \
+		../../clib/fncollection.c                            \
+		../../clib/ringbuffer.c                              \
+		../../clib/fband.c                                   \
+		../../clib/rf_send.c                                 \
+		../../clib/rf_asksin.c                               \
+		../../clib/rf_moritz.c                               \
+		../../clib/rf_receive.c                              \
+		../../clib/rf_router.c                               \
+		../../clib/rf_mbus.c                                 \
+		../../clib/intertechno.c                             \
+		../../clib/somfy_rts.c		                  		     \
+		../../clib/fht.c                                     \
+		../../clib/fastrf.c                                  \
+		../../clib/memory.c                                  \
+		../../clib/serial.c                                  \
+		../../clib/ttydata.c                                 \
+		../../clib/stacking.c                                \
+		../../clib/spi.c                                     \
+		../../clib/mbus/manchester.c                         \
+		../../clib/mbus/3outof6.c                            \
+		../../clib/mbus/mbus_packet.c                        \
+		../../clib/mbus/crc.c                                \
+
+SRC += ../../clib/rf_mbus.c ../../clib/mbus/manchester.c ../../clib/mbus/3outof6.c ../../clib/mbus/mbus_packet.c ../../clib/mbus/crc.c
 
 
-OPT=s
+OPT = s
 DEBUG = dwarf-2
-LUFA_OPTS  = -D USE_NONSTANDARD_DESCRIPTOR_NAMES
-LUFA_OPTS += -D NO_STREAM_CALLBACKS
-LUFA_OPTS += -D USB_DEVICE_ONLY
-LUFA_OPTS += -D FIXED_CONTROL_ENDPOINT_SIZE=8
-LUFA_OPTS += -D FIXED_NUM_CONFIGURATIONS=1
-LUFA_OPTS += -D USE_FLASH_DESCRIPTORS
-LUFA_OPTS += -D F_CLOCK=$(F_CPU)UL
-LUFA_OPTS += -D USE_STATIC_OPTIONS="(USB_DEVICE_OPT_FULLSPEED | USB_OPT_REG_ENABLED | USB_OPT_AUTO_PLL)"
-EXTRAINCDIRS = ../.. ../../lufa ../../clib ../../avr-uip ../../avr-uip/uip
-
+EXTRAINCDIRS = ../../clib
 CSTANDARD = -std=gnu99
-
-CDEFS  = -DF_CPU=$(F_CPU)UL -DBOARD=BOARD_$(BOARD)
-CDEFS += -DLUFA $(LUFA_OPTS)
+CDEFS  = -DF_CPU=$(F_CPU)UL
 
 ADEFS = -DF_CPU=$(F_CPU)
 CPPDEFS = -DF_CPU=$(F_CPU)UL
+
+# try reading configuration EEPROMs 
+ifneq (,$(wildcard /sys/class/i2c-adapter/i2c-1/1-0057/eeprom))
+ifeq ($(shell head -c 7 /sys/class/i2c-adapter/i2c-1/1-0057/eeprom), PIG_ETH)
+ifeq ($(shell head -c 3 /sys/class/i2c-adapter/i2c-1/1-0050/eeprom), CSM)
+RPIN=22
+BLPIN=27
+endif
+endif
+endif
 
 CFLAGS = -g$(DEBUG)
 CFLAGS += $(CDEFS)
@@ -87,14 +66,14 @@ CFLAGS += -ffunction-sections
 CFLAGS += -fpack-struct
 CFLAGS += -fshort-enums
 CFLAGS += -finline-limit=20
-CFLAGS += -fno-strict-aliasing  # avr-uip needs it
-CFLAGS += -Wall -Wno-strict-aliasing -Wno-unused-but-set-variable
-#CFLAGS += -Wstrict-prototypes
+CFLAGS += -Wall
+CFLAGS += -Wstrict-prototypes
 CFLAGS += -Wundef
 #CFLAGS += -Wunreachable-code
 CFLAGS += -Wa,-adhlns=$(<:%.c=$(OBJDIR)/%.lst)
 CFLAGS += $(patsubst %,-I%,$(EXTRAINCDIRS))
 CFLAGS += $(CSTANDARD)
+CFLAGS += -mcall-prologues
 
 
 CPPFLAGS = -g$(DEBUG)
@@ -115,38 +94,30 @@ ASFLAGS = $(ADEFS) -Wa,-adhlns=$(<:%.S=$(OBJDIR)/%.lst),-gstabs,--listing-cont-l
 
 
 PRINTF_LIB_MIN = -Wl,-u,vfprintf -lprintf_min
-
 PRINTF_LIB_FLOAT = -Wl,-u,vfprintf -lprintf_flt
-
-PRINTF_LIB = 
-
-
+PRINTF_LIB =
 SCANF_LIB_MIN = -Wl,-u,vfscanf -lscanf_min
-
 SCANF_LIB_FLOAT = -Wl,-u,vfscanf -lscanf_flt
-
-SCANF_LIB = 
-
-
+SCANF_LIB =
 MATH_LIB = -lm
-
-
-EXTRALIBDIRS = 
-
-#EXTMEMOPTS = 
-EXTMEMOPTS = -Wl,--defsym=__heap_start=0x802100,--defsym=__heap_end=0x80a0ff
+EXTRALIBDIRS =
+EXTMEMOPTS =
 
 
 LDFLAGS = -Wl,-Map=$(TARGET).map,--cref
-LDFLAGS += -Wl,--relax 
+LDFLAGS += -Wl,--relax
 LDFLAGS += -Wl,--gc-sections
 LDFLAGS += $(EXTMEMOPTS)
 LDFLAGS += $(patsubst %,-L%,$(EXTRALIBDIRS))
 LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 
+AVRDUDE_NO_VERIFY = -V
 
-AVRDUDE_PROGRAMMER = jtagmkII
-AVRDUDE_PORT = usb
+#AVRDUDE_PROGRAMMER = jtagmkII
+#AVRDUDE_PORT = usb
+#AVRDUDE_PROGRAMMER = stk500v2
+AVRDUDE_PROGRAMMER = avr109 -b 38400
+AVRDUDE_PORT = /dev/ttyAMA0
 AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 AVRDUDE_FLAGS = -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER)
 AVRDUDE_FLAGS += $(AVRDUDE_NO_VERIFY)
@@ -159,9 +130,9 @@ DEBUG_UI = insight
 DEBUG_BACKEND = avarice
 GDBINIT_FILE = __avr_gdbinit
 JTAG_DEV = /dev/com1
+
 DEBUG_PORT = 4242
 DEBUG_HOST = localhost
-
 
 SHELL = sh
 CC = avr-gcc
@@ -179,7 +150,7 @@ WINSHELL = cmd
 MSG_ERRORS_NONE = Errors: none
 MSG_BEGIN = -------- begin --------
 MSG_END = --------  end  --------
-MSG_SIZE_BEFORE = Size before: 
+MSG_SIZE_BEFORE = Size before:
 MSG_SIZE_AFTER = Size after:
 MSG_COFF = Converting to AVR COFF:
 MSG_EXTENDED_COFF = Converting to AVR Extended COFF:
@@ -197,9 +168,9 @@ MSG_CREATING_LIBRARY = Creating library:
 
 
 
-OBJ = $(SRC:%.c=$(OBJDIR)/%.o) $(CPPSRC:%.cpp=$(OBJDIR)/%.o) $(ASRC:%.S=$(OBJDIR)/%.o) 
+OBJ = $(SRC:%.c=$(OBJDIR)/%.o) $(CPPSRC:%.cpp=$(OBJDIR)/%.o) $(ASRC:%.S=$(OBJDIR)/%.o)
 
-LST = $(SRC:%.c=$(OBJDIR)/%.lst) $(CPPSRC:%.cpp=$(OBJDIR)/%.lst) $(ASRC:%.S=$(OBJDIR)/%.lst) 
+LST = $(SRC:%.c=$(OBJDIR)/%.lst) $(CPPSRC:%.cpp=$(OBJDIR)/%.lst) $(ASRC:%.S=$(OBJDIR)/%.lst)
 
 
 GENDEPFLAGS = -MMD -MP -MF .dep/$(@F).d
@@ -211,7 +182,7 @@ ALL_ASFLAGS = -mmcu=$(MCU) -I. -x assembler-with-cpp $(ASFLAGS)
 
 
 
-all: sizebefore build sizeafter
+all: build sizeafter
 
 build: elf hex eep lss sym
 
@@ -262,21 +233,61 @@ checklibmode:
 	          || echo "No specific mode (both device and host mode allowable)."
 	@echo ------------------------------------
 
-gccversion : 
+gccversion :
 	@$(CC) --version
 
 
-program: $(TARGET).hex $(TARGET).eep
-	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH) $(AVRDUDE_WRITE_EEPROM)
+program: $(TARGET).hex
+	@echo 
+	@echo calling radio frontends bootloader / RESET gpio$(RPIN) BL_SEL gpio$(BLPIN)
+	@echo
+	if test ! -d /sys/class/gpio/gpio$(RPIN); then echo $(RPIN) > /sys/class/gpio/export; fi
+	echo out > /sys/class/gpio/gpio$(RPIN)/direction
+	echo 0 > /sys/class/gpio/gpio$(RPIN)/value
+
+	if test ! -d /sys/class/gpio/gpio$(BLPIN); then echo $(BLPIN) > /sys/class/gpio/export; fi
+	echo out > /sys/class/gpio/gpio$(BLPIN)/direction
+	echo 0 > /sys/class/gpio/gpio$(BLPIN)/value
+
+	echo 1 > /sys/class/gpio/gpio$(RPIN)/value
+	sleep 1
+	echo 1 > /sys/class/gpio/gpio$(BLPIN)/value
+	echo in > /sys/class/gpio/gpio$(BLPIN)/direction
+	echo $(BLPIN) > /sys/class/gpio/unexport
+
+	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH)
+
+	echo 0 > /sys/class/gpio/gpio$(RPIN)/value
+	sleep 1
+	echo 1 > /sys/class/gpio/gpio$(RPIN)/value
+
+program_isp: $(TARGET).hex $(TARGET).eep
+	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH) $(AVRDUDE_WRITE_EEPROM) -U lfuse:w:0xc2:m -U hfuse:w:0x99:m
+
+erase:
+	$(AVRDUDE) $(AVRDUDE_FLAGS) -e
 
 
 usbprogram: $(TARGET).hex
-	dfu-programmer $(MCU) erase || true
-	dfu-programmer $(MCU) flash $(TARGET).hex
-	dfu-programmer $(MCU) start
+	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH)
+
+deb: $(TARGET).hex
+	echo $(PWD)
+	rm -rf .f $(DESTDIR) *.deb
+	mkdir -p .f/boot
+	cp -r DEBIAN .f/
+	rm -fr .f/DEBIAN/CVS
+	cp $(TARGET).hex .f/boot/culfw-s0logger.hex
+	find .f -type f -print | xargs perl -pi -e 's/=VERS=/$(VERS)/g;s/=DATE=/$(DATE)/g'
+	chown -R root:root .f
+	mv .f $(DESTDIR)
+	dpkg-deb --build $(DESTDIR)
+	rm -rf $(DESTDIR)
+	scp $(DESTDIR).deb busware.de:/srv/ftp/debian/dists/tuxrail2/main/
+	@echo run /root/update_apt.sh
 
 
-gdb-config: 
+gdb-config:
 	@$(REMOVE) $(GDBINIT_FILE)
 	@echo define reset >> $(GDBINIT_FILE)
 	@echo SIGNAL SIGHUP >> $(GDBINIT_FILE)
@@ -361,13 +372,13 @@ extcoff: $(TARGET).elf
 
 $(OBJDIR)/%.o : %.c
 	@echo $(MSG_COMPILING) $<
-	@$(CC) -c $(ALL_CFLAGS) $< -o $@ 
+	@$(CC) -c $(ALL_CFLAGS) $< -o $@
 
 
 $(OBJDIR)/%.o : %.cpp
 	@echo
 	@echo $(MSG_COMPILING_CPP) $<
-	$(CC) -c $(ALL_CPPFLAGS) $< -o $@ 
+	$(CC) -c $(ALL_CPPFLAGS) $< -o $@
 
 
 %.s : %.c
@@ -385,7 +396,7 @@ $(OBJDIR)/%.o : %.S
 
 
 %.i : %.c
-	$(CC) -E -mmcu=$(MCU) -I. $(CFLAGS) $< -o $@ 
+	$(CC) -E -mmcu=$(MCU) -I. $(CFLAGS) $< -o $@
 
 clean: clean_list clean_binary
 

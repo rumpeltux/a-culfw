@@ -1,12 +1,16 @@
+MCU = atmega328p
 F_CPU = 8000000
 FORMAT = ihex
+TARGET = miniCUL
 OBJDIR = .
 
-SRC =           CUL.c\
-		../../clib/Descriptors.c                             \
+VERS=1.61
+DATE=$(shell date +%Y-%m-%d)
+DESTDIR=culfw-miniCUL.$(VERS)
+
+SRC = $(TARGET).c                                                    \
 		../../clib/cc1100.c                                  \
 		../../clib/cc1101_pllcheck.c                         \
-		../../clib/cdcLUFA.c                                 \
 		../../clib/clock.c                                   \
 		../../clib/delay.c                                   \
 		../../clib/display.c                                 \
@@ -17,39 +21,16 @@ SRC =           CUL.c\
 		../../clib/rf_send.c                                 \
 		../../clib/rf_receive.c                              \
 		../../clib/rf_router.c                               \
-		../../clib/rf_asksin.c                               \
-		../../clib/rf_moritz.c                               \
-		../../clib/rf_rwe.c                                  \
 		../../clib/intertechno.c                             \
-		../../clib/somfy_rts.c                               \
 		../../clib/fht.c                                     \
 		../../clib/fastrf.c                                  \
+		../../clib/memory.c                                  \
+		../../clib/serial.c                                  \
 		../../clib/ttydata.c                                 \
 		../../clib/spi.c                                     \
-		../../clib/memory.c                                  \
-		../../lufa/Drivers/USB/LowLevel/DevChapter9.c        \
-		../../lufa/Drivers/USB/LowLevel/Endpoint.c           \
-		../../lufa/Drivers/USB/LowLevel/Host.c               \
-		../../lufa/Drivers/USB/LowLevel/HostChapter9.c       \
-		../../lufa/Drivers/USB/LowLevel/LowLevel.c           \
-		../../lufa/Drivers/USB/LowLevel/Pipe.c               \
-		../../lufa/Drivers/USB/HighLevel/Events.c            \
-		../../lufa/Drivers/USB/HighLevel/USBInterrupt.c      \
-		../../lufa/Drivers/USB/HighLevel/USBTask.c           \
-		../../lufa/Drivers/USB/HighLevel/ConfigDescriptor.c  \
 
-
-LUFA_OPTS  = -D USE_NONSTANDARD_DESCRIPTOR_NAMES
-LUFA_OPTS += -D NO_STREAM_CALLBACKS
-LUFA_OPTS += -D USB_DEVICE_ONLY
-LUFA_OPTS += -D FIXED_CONTROL_ENDPOINT_SIZE=8
-LUFA_OPTS += -D FIXED_NUM_CONFIGURATIONS=1
-LUFA_OPTS += -D USE_FLASH_DESCRIPTORS
-LUFA_OPTS += -D F_CLOCK=$(F_CPU)UL
-LUFA_OPTS += -D USE_STATIC_OPTIONS="(USB_DEVICE_OPT_FULLSPEED | USB_OPT_REG_ENABLED | USB_OPT_AUTO_PLL)"
 CFLAGS  = -D$(TARGET)
 CFLAGS += -DF_CPU=$(F_CPU)UL
-CFLAGS += -DLUFA $(LUFA_OPTS)
 CFLAGS += -Os
 CFLAGS += -funsigned-char       #   12 Byte (shorter code)
 CFLAGS += -funsigned-bitfields  #    0
@@ -70,9 +51,14 @@ ALL_CFLAGS = -mmcu=$(MCU) -I. $(CFLAGS) $(GENDEPFLAGS)
 
 EXTMEMOPTS =
 LDFLAGS = -Wl,-Map=$(TARGET).map,--cref
-LDFLAGS += -Wl,--relax
+LDFLAGS += -Wl,--relax 
 LDFLAGS += -Wl,--gc-sections
 LDFLAGS += $(EXTMEMOPTS)
+
+AVRDUDE_PROGRAMMER = arduino -b 19200
+AVRDUDE_PORT = /dev/ttyUSB0
+AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
+AVRDUDE_FLAGS = -p m328p -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER)
 
 CC = avr-gcc
 OBJCOPY = avr-objcopy
@@ -83,6 +69,7 @@ NM = avr-nm
 REMOVE = rm -f
 REMOVEDIR = rm -rf
 COPY = cp
+AVRDUDE = avrdude
 
 MSG_SIZE = Size:
 MSG_FLASH = Creating load file for Flash:
@@ -95,16 +82,8 @@ MSG_CLEANING = Cleaning project:
 
 OBJ = $(SRC:%.c=$(OBJDIR)/%.o)
 
-ifeq ($(TARGET), CUL_V3)
-SRC += ../../clib/rf_mbus.c ../../clib/mbus/manchester.c ../../clib/mbus/3outof6.c ../../clib/mbus/mbus_packet.c ../../clib/mbus/crc.c
-endif
 
-all:
-	make TARGET=CUL_V2 MCU=at90usb162 mostly_clean build size
-	make TARGET=CUL_V2_HM MCU=at90usb162 mostly_clean build size
-	make TARGET=CUL_V2_MAX MCU=at90usb162 mostly_clean build size
-	make TARGET=CUL_V3 MCU=atmega32u4 mostly_clean build size
-	make TARGET=CUL_V4 MCU=atmega32u2 mostly_clean build size
+all: mostly_clean build size
 
 build: elf hex eep lss sym
 
@@ -122,28 +101,15 @@ size:
 	2>/dev/null; echo; fi
 
 
+program: $(TARGET).hex
+	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH)
+
 usbprogram:
-	@echo 'specify one of: usbprogram_v2 usbprogram_v2_hm usbprogram_v3 usbprogram_v4'
+	@echo 'specify one of: usbprogram_minicul'
 
-usbprogram_v4: TARGET=CUL_V4
-usbprogram_v4: MCU=atmega32u2
-usbprogram_v4: do_usbprogram
-
-usbprogram_v3: TARGET=CUL_V3
-usbprogram_v3: MCU=atmega32u4
-usbprogram_v3: do_usbprogram
-
-usbprogram_v2: TARGET=CUL_V2
-usbprogram_v2: MCU=at90usb162
-usbprogram_v2: do_usbprogram
-
-usbprogram_v2_hm: TARGET=CUL_V2_HM
-usbprogram_v2_hm: MCU=at90usb162
-usbprogram_v2_hm: do_usbprogram
-
-usbprogram_v2_max: TARGET=CUL_V2_MAX
-usbprogram_v2_max: MCU=at90usb162
-usbprogram_v2_max: do_usbprogram
+usbprogram_minicul: TARGET=miniCUL
+usbprogram_minicul: MCU=atmega32u4
+usbprogram_minicul: do_usbprogram
 
 do_usbprogram:
 	dfu-programmer $(MCU) erase || true
@@ -178,7 +144,7 @@ do_usbprogram:
 
 $(OBJDIR)/%.o : %.c
 	@echo $(MSG_COMPILING) $<
-	@$(CC) -c $(ALL_CFLAGS) $< -o $@
+	@$(CC) -c $(ALL_CFLAGS) $< -o $@ 
 
 mostly_clean:
 	@echo $(MSG_CLEANING)

@@ -2,6 +2,7 @@
 #include <avr/wdt.h>
 #include <avr/interrupt.h>
 
+#include "fband.h"
 #include "board.h"
 #include "display.h"
 #include "delay.h"
@@ -155,6 +156,9 @@ write_eeprom(char *in)
       
     ewb((uint8_t*)addr, hb[d-1]);
 
+    if (addr == 15 || addr == 16 || addr == 17)
+      checkFrequency();
+
     // If there are still bytes left, then write them too
     in += (2*d+1);
     while(in[0]) {
@@ -208,6 +212,7 @@ eeprom_factory_reset(char *in)
   ewb(EE_MAGIC_OFFSET+1, VERSION_2);
 
   cc_factory_reset();
+  checkFrequency();
 
   ewb(EE_RF_ROUTER_ID, 0);
   ewb(EE_RF_ROUTER_ROUTER, 0);
@@ -313,6 +318,11 @@ version(char *in)
   else
 #endif
   DS_P( PSTR("V " VERSION " " BOARD_ID_STR) );
+  if (is433MHz()) {
+     DS_P( PSTR(" (F-Band: 433MHz)") );
+  } else {
+     DS_P( PSTR(" (F-Band: 868MHz)") );
+  }
   DNL();
 }
 

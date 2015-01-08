@@ -13,6 +13,7 @@
 
 #include <string.h>
 
+#include "fband.h"
 #include "spi.h"
 #include "cc1100.h"
 #include "clock.h"
@@ -180,6 +181,7 @@ void culfw_init(void) {
   display_channel |= DISPLAY_DOGM;
 #endif
 
+  checkFrequency(); 
   LED_OFF();
 
   sei();

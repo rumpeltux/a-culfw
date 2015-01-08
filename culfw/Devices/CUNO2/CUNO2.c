@@ -12,6 +12,7 @@
 
 #include <string.h>
 
+#include "fband.h"
 #include "spi.h"
 #include "cc1100.h"
 #include "clock.h"
@@ -201,6 +202,7 @@ main(void)
 
   ethernet_init();
     
+  checkFrequency(); 
   LED_OFF();
 
 #ifdef HAS_DMX

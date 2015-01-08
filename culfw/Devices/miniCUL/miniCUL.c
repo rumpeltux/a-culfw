@@ -27,79 +27,30 @@
 #include "ringbuffer.h"
 #include "rf_receive.h"
 #include "rf_send.h"
-#include "rf_moritz.h"
 #include "ttydata.h"
 #include "fastrf.h"
 #include "rf_router.h"
-#include "i2cmaster.h"
 #include "intertechno.h"
-#include "adcw.h"
-#include "cctemp.h"
 #include "fht.h"
 
-#ifdef HAS_ASKSIN
-#include "rf_asksin.h"
+#ifdef HAS_MEMFN
+#include "memory.h"
 #endif
-#ifdef HAS_MORITZ
-#include "rf_moritz.h"
-#endif
-#ifdef HAS_RWE
-#include "rf_rwe.h"
-#endif
+
 #ifdef HAS_INTERTECHNO
 #include "intertechno.h"
 #endif
-#ifdef HAS_SOMFY_RTS
-#include "somfy_rts.h"
-#endif
-#ifdef HAS_MBUS
-#include "rf_mbus.h"
-#endif
-
-
-
-#ifdef HAS_CC1100_433
-const uint8_t mark433_pin = 0x00;
-#else
-const uint8_t mark433_pin = 0xff;
-#endif
 
 const PROGMEM t_fntab fntab[] = {
-
   { 'B', prepare_boot },
-#ifdef HAS_MBUS
-  { 'b', rf_mbus_func },
-#endif
   { 'C', ccreg },
   { 'F', fs20send },
 #ifdef HAS_INTERTECHNO
   { 'i', it_func },
 #endif
-#ifdef HAS_ASKSIN
-  { 'A', asksin_func },
-#endif
-#if defined (HAS_IRRX) || defined (HAS_IRTX)
-  { 'I', ir_func },
-#endif
-#ifdef HAS_MORITZ
-  { 'Z', moritz_func },
-#endif
-#ifdef HAS_RWE
-  { 'E', rwe_func },
-#endif
-#ifdef HAS_ONEWIRE
-  { 'O', onewire_func },
-#endif
 #ifdef HAS_RAWSEND
   { 'G', rawsend },
   { 'M', em_send },
-  { 'K', ks_send },
-#endif
-#ifdef HAS_UNIROLL
-  { 'U', ur_send },
-#endif
-#ifdef HAS_SOMFY_RTS
-  { 'Y', somfy_rts_func },
 #endif
   { 'R', read_eeprom },
   { 'T', fhtsend },
@@ -108,16 +59,11 @@ const PROGMEM t_fntab fntab[] = {
   { 'X', set_txreport },
 
   { 'e', eeprom_factory_reset },
- // { 'h', cctemp_func },       // HU: hömérsék :)
-  
-#ifdef HAS_FASTRF
-  { 'f', fastrf_func },
+#ifdef HAS_MEMFN
+  { 'm', getfreemem },
 #endif
   { 'l', ledfunc },
   { 't', gettime },
-#ifdef HAS_RF_ROUTER
-  { 'u', rf_router_func },
-#endif
   { 'x', ccsetpa },
 
   { 0, 0 },
@@ -127,19 +73,10 @@ int
 main(void)
 {
   wdt_disable();
-#ifdef HAS_16MHZ_CLOCK
-  /* set clock to 16MHz/2 = 8Mhz */
-  clock_prescale_set(clock_div_2);
-#endif
-
-//  LED_ON_DDR  |= _BV( LED_ON_PIN );
-//  LED_ON_PORT |= _BV( LED_ON_PIN );
 
   led_init();
-  LED_ON();
 
   spi_init();
- // init_adcw();
 
   //eeprom_factory_reset("xx");
   eeprom_init();
@@ -153,15 +90,14 @@ main(void)
   TCCR1A = 0;
   TCCR1B = _BV(CS11) | _BV(WGM12);         // Timer1: 1us = 8MHz/8
 
+  clock_prescale_set(clock_div_1);
 
   MCUSR &= ~(1 << WDRF);                   // Enable the watchdog
   wdt_enable(WDTO_2S);
 
-#ifdef HAS_16MHZ_CLOCK
-  uart_init( UART_BAUD_SELECT(UART_BAUD_RATE,F_CPU) );
-#else
+  //uart_init( UART_BAUD_SELECT_DOUBLE_SPEED(UART_BAUD_RATE,F_CPU) );
   uart_init( UART_BAUD_SELECT_DOUBLE_SPEED(UART_BAUD_RATE,F_CPU) );
-#endif
+
   fht_init();
   tx_init();
   input_handle_func = analyze_ttydata;
@@ -174,8 +110,6 @@ main(void)
 #endif
 
   checkFrequency(); 
-  LED_OFF();
-
   sei();
 
   for(;;) {
@@ -187,18 +121,6 @@ main(void)
 #endif
 #ifdef HAS_RF_ROUTER
     rf_router_task();
-#endif
-#ifdef HAS_ASKSIN
-    rf_asksin_task();
-#endif
-#ifdef HAS_MORITZ
-    rf_moritz_task();
-#endif
-#ifdef HAS_RWE
-    rf_rwe_task();
-#endif
-#ifdef HAS_MBUS
-    rf_mbus_task();
 #endif
   }
 
