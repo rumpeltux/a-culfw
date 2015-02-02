@@ -12,7 +12,7 @@ SRC =           CCD.c\
 		../../clib/display.c                                 \
 		../../clib/stringfunc.c                              \
 		../../clib/fncollection.c                            \
-		../../clib/fband.c                                    \
+		../../clib/fband.c                                   \
 		../../clib/ringbuffer.c                              \
 		../../clib/rf_send.c                                 \
 		../../clib/rf_receive.c                              \
@@ -21,6 +21,7 @@ SRC =           CCD.c\
 		../../clib/rf_moritz.c                               \
 		../../clib/rf_rwe.c                                  \
 		../../clib/intertechno.c                             \
+		../../clib/kopp-fc.c				   				 \
 		../../clib/fht.c                                     \
 		../../clib/fastrf.c                                  \
 		../../clib/ttydata.c                                 \
