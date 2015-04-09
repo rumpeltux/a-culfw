@@ -2,18 +2,30 @@
 #define _RF_RECEIVE_H
 
 
-#define TYPE_EM       'E'
-#define TYPE_HMS      'H'
-#define TYPE_FHT      'T'
-#define TYPE_FS20     'F'
-#define TYPE_KS300    'K'
-#define TYPE_HRM      'R'        // Hoermann
-#define TYPE_ESA      'S'
-#define TYPE_TX3      't'
-#define TYPE_TCM97001 's'
+#include "board.h"
 
-#define TYPE_REVOLT	 'r'
-#define TYPE_IT  	 'i'
+#include "fband.h"
+#include "helper.h"
+
+#include "rf_receive_bucket.h"
+#include "rf_receive_tcm97001.h"
+#include "rf_receive_it.h"
+#include "rf_receive_tx3.h"
+#include "rf_receive_revolt.h"
+#include "rf_receive_esa.h"
+#include "rf_receive_hms.h"
+
+#define TYPE_EM      'E'
+
+#define TYPE_FHT     'T'
+#define TYPE_FS20    'F'
+#define TYPE_KS300   'K'
+#define TYPE_HRM     'R'        // Hoermann
+
+
+
+
+
 
 #define REP_KNOWN    _BV(0)
 #define REP_REPEATED _BV(1)
@@ -29,25 +41,6 @@
 
 #ifndef REPTIME
 #define REPTIME      38
-#endif
-
-/* public prototypes */
-#ifdef HAS_ESA
-#define MAXMSG 20               // ESA messages
-#else
-#define MAXMSG 12               // EMEM messages
-#endif
-
-#ifdef HAS_IT
-#ifndef LONG_PULSE
-#define LONG_PULSE
-#endif
-#endif
-
-#ifdef HAS_REVOLT
-#ifndef LONG_PULSE
-#define LONG_PULSE
-#endif
 #endif
 
 

@@ -80,7 +80,7 @@ const PROGMEM const uint8_t CC1100_ITCFG[EE_CC1100_CFG_SIZE] = {
 };
 
 uint16_t it_interval = 420;
-uint16_t it_interval_v3 = 260;
+uint16_t it_interval_v3 = 250;
 uint16_t it_repetition = 6;
 uint8_t restore_asksin = 0;
 uint8_t restore_moritz = 0;
@@ -220,6 +220,10 @@ send_IT_bit_V3(uint8_t bit)
 
 static void
 it_send (char *in) {	
+
+    //while (rf_isreceiving()) {
+      //_delay_ms(1);
+    //}
 	  int8_t i, j, k;
 
 		LED_ON();
@@ -227,68 +231,73 @@ it_send (char *in) {
     #if defined (HAS_IRRX) || defined (HAS_IRTX) //Blockout IR_Reception for the moment
       cli(); 
     #endif
-
-	  // If NOT InterTechno mode
-	  if(!intertechno_on)  {
-	    #ifdef HAS_ASKSIN
-		    if (asksin_on) {
-			    restore_asksin = 1;
-			    asksin_on = 0;
-			    }
-	    #endif
-	    #ifdef HAS_MORITZ
-		    if(moritz_on) {
-			    restore_moritz = 1;
-			    moritz_on = 0;
-		    }
-	    #endif
-	    it_tunein();
-	    my_delay_ms(3);             // 3ms: Found by trial and error
+  
+	// If NOT InterTechno mode
+	if(!intertechno_on)  {
+	#ifdef HAS_ASKSIN
+		if (asksin_on) {
+			restore_asksin = 1;
+			asksin_on = 0;
+			}
+	#endif
+	#ifdef HAS_MORITZ
+		if(moritz_on) {
+			restore_moritz = 1;
+			moritz_on = 0;
+		}
+	#endif
+	it_tunein();
+	my_delay_ms(3);             // 3ms: Found by trial and error
     }
   	ccStrobe(CC1100_SIDLE);
   	ccStrobe(CC1100_SFRX );
   	ccStrobe(CC1100_SFTX );
 
 	  ccTX();                       // Enable TX 
-
-    int8_t sizeOfPackage = strlen(in)-1; // IT-V1 = 14, IT-V3 = 33
-	  
+	
+    int8_t sizeOfPackage = strlen(in)-1; // IT-V1 = 14, IT-V3 = 33, IT-V3-Dimm = 37
+	  int8_t mode = 0; // IT V1
+    if (sizeOfPackage == 33 || sizeOfPackage == 37) { 
+      mode = 1; // IT V3
+      
+    }
 		for(i = 0; i < it_repetition; i++)  {
-      if (sizeOfPackage == 33) {      
+      if (mode == 1) {    
+        send_IT_stop_V3();  
         send_IT_start_V3();
+      } else {
+        // Sync-Bit for IT V1 send befor package
+        CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
+        my_delay_us(it_interval);
+        CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
+        for(k = 0; k < 31; k++)  {
+          my_delay_us(it_interval);
+        }
       }
 		  for(j = 1; j < sizeOfPackage; j++)  {
 			  if(in[j+1] == '0') {
-          if (sizeOfPackage == 33) {
+          if (mode == 1) {
 					  send_IT_bit_V3(0);
           } else {
 					  send_IT_bit(0);
           }      
 				} else if (in[j+1] == '1') {
-          if (sizeOfPackage == 33) {
+          if (mode == 1) {
 					  send_IT_bit_V3(1);
           } else {
 					  send_IT_bit(1);
           }  
 				} else {
-          if (sizeOfPackage == 33) {
+          if (mode == 1) {
 					  send_IT_bit_V3(2);
-          } else {
+				  } else {
 					  send_IT_bit(2);
-          }  
-				}
-			}
-      if (sizeOfPackage == 33) {  
-        send_IT_stop_V3();
-      } else {
-			  // Sync-Bit
-		    CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-		    my_delay_us(it_interval);
-		    CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-		    for(k = 0; k < 31; k++)  {
-			    my_delay_us(it_interval);
+				  }
 			  }
-      }
+			}
+      //if (mode == 1) {  
+      //  send_IT_stop_V3();
+      //}
 		} //Do it n Times
 	
   	if(intertechno_on) {
@@ -329,7 +338,11 @@ it_send (char *in) {
 			} else if (in[j+1] == '1') {
 				DC('1');
 			} else {
-				DC('F');
+        if (mode == 1) {  
+   				DC('D');
+        } else {
+				  DC('F');
+        }
 			}
 		}
 		DNL();

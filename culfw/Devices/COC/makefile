@@ -15,6 +15,14 @@ SRC =           COC.c\
 		../../clib/ringbuffer.c                              \
 		../../clib/rf_send.c                                 \
 		../../clib/rf_receive.c                              \
+		../../clib/rf_receive_bucket.c                       \
+		../../clib/rf_receive_tcm97001.c                     \
+		../../clib/rf_receive_it.c                           \
+		../../clib/rf_receive_tx3.c                          \
+		../../clib/rf_receive_revolt.c                       \
+		../../clib/rf_receive_esa.c                          \
+		../../clib/rf_receive_hms.c                          \
+		../../clib/helper.c                                  \
 		../../clib/rf_router.c                               \
 		../../clib/rf_asksin.c                               \
 		../../clib/rf_mbus.c                                 \
@@ -34,6 +42,11 @@ SRC =           COC.c\
 		../../clib/onewire.c                                 \
 		../../clib/ds1339.c                                  \
 		../../clib/memory.c                                  \
+                ../../clib/rf_mbus.c                                 \
+                ../../clib/mbus/manchester.c                         \
+                ../../clib/mbus/3outof6.c                            \
+                ../../clib/mbus/mbus_packet.c                        \
+                ../../clib/mbus/crc.c                                \
 
 
 LUFA_OPTS  = -D USE_NONSTANDARD_DESCRIPTOR_NAMES
@@ -118,7 +131,7 @@ lss: $(TARGET).lss
 sym: $(TARGET).sym
 
 
-ELFSIZE = $(SIZE) $(TARGET).elf
+ELFSIZE = $(SIZE) --format=avr $(TARGET).elf
 
 size:
 	@if test -f $(TARGET).elf; then echo $(MSG_SIZE); $(ELFSIZE); \

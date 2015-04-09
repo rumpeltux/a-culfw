@@ -56,6 +56,7 @@
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
+#include "fband.h"
 #include <avr/wdt.h>			// for Watchdog Reset
 #include "cc1100.h"
 #include "delay.h"
@@ -218,6 +219,7 @@ kopp_fc_init(void)
   
 
   kopp_fc_on = 1;								//##Claus may be not needed in future (Tx Only)
+  checkFrequency(); 
 }
 
 // kopp_fc_init  E N D

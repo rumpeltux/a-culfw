@@ -35,12 +35,14 @@
 #  define HAS_ESA
 #  define HAS_TX3
 #  define HAS_INTERTECHNO
+#  define HAS_TCM97001
 #  define HAS_UNIROLL
-#  define HAS_HOERMANN
+//#  define HAS_HOERMANN
 #  define HAS_MEMFN
 #  define HAS_SOMFY_RTS
 #  define HAS_IT
-#  define HAS_TCM97001
+#  define HAS_HMS
+//#  define DEBUG_SYNC
 #endif
 
 
