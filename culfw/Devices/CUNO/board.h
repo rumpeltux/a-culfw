@@ -78,6 +78,7 @@
 #define HAS_SOMFY_RTS
 #define HAS_IT
 #define HAS_HMS
+#define HAS_HOMEEASY
 
 #define HAS_CC1101_RX_PLL_LOCK_CHECK_TASK_WAIT
 #define HAS_CC1101_PLL_LOCK_CHECK_MSG
@@ -92,6 +93,8 @@
 #define HAS_UART                1
 #define UART_BAUD_RATE          38400
 #define HAS_ETHERNET            1
+#define HAS_ETHERNET_KEEPALIVE  1
+#define ETHERNET_KEEPALIVE_TIME 30
 #define HAS_NTP                 1
 #define HAS_ONEWIRE						  10		// OneWire Device Buffer, RAM: 10 * 8 Byte
 

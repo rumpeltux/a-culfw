@@ -87,6 +87,8 @@
 
 #define HAS_USB                 1       // undef or define...1
 #define HAS_ETHERNET            1       // undef or define...1
+#define HAS_ETHERNET_KEEPALIVE  1
+#define ETHERNET_KEEPALIVE_TIME 30
 #define HAS_XRAM                1       // undef or define...1
 #define HAS_NTP                 1       // undef or define...1
 
@@ -109,6 +111,7 @@
 #define HAS_HOERMANN
 #define HAS_IT
 #define HAS_TCM97001
+#define HAS_HOMEEASY
 #define HAS_HMS
 
 #define HAS_CC1101_RX_PLL_LOCK_CHECK_TASK_WAIT

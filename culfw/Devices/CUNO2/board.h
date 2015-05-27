@@ -72,6 +72,7 @@
 #define HAS_ESA
 #define HAS_TX3
 #define HAS_INTERTECHNO
+#define HAS_HOMEEASY
 #define HAS_TCM97001
 #define HAS_HOERMANN
 #define HAS_MORITZ
@@ -116,6 +117,8 @@
 #define HAS_UART                1
 #define UART_BAUD_RATE          38400
 #define HAS_ETHERNET            1   
+#define HAS_ETHERNET_KEEPALIVE  1
+#define ETHERNET_KEEPALIVE_TIME 30
 #define HAS_NTP                 1   
 
 #define HAS_ONEWIRE         10      // OneWire Device Buffer, RAM: 10 * 8 Byte 
