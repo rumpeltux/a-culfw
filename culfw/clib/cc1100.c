@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <string.h>
+#include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
+
 
 #include "delay.h"
 #include "display.h"
@@ -65,8 +67,10 @@ const PROGMEM const uint8_t CC1100_CFG[EE_CC1100_CFG_SIZE] = {
    0x21, // 0D FREQ2    *1E    21    868.3 (def:800MHz)
    0x65, // 0E FREQ1    *C4    65    
    0x6a, // 0F FREQ0    *EC    e8    
-   0x55, // 10 MDMCFG4  *8C    55    bWidth 325kHz
-   0xe4, // 11 MDMCFG3  *22   *43    Drate:1500 ((256+228)*2^5)*26000000/2^28
+   //0x55, // 10 MDMCFG4  *8C    55    bWidth 325kHz
+   0x57, // 10 MDMCFG4  *8C    55    bWidth 325kHz
+   //0xe4, // 11 MDMCFG3  *22   *43    Drate:1500 ((256+228)*2^5)*26000000/2^28
+   0xC4, // 11 MDMCFG3 (x)   DataRate: 5603,79 Baud ((256+196)*2^7)*26000000/(2^28)
    0x30, // 12 MDMCFG2  *02   *B0    Modulation: ASK
    0x23, // 13 MDMCFG1  *22    23    
    0xb9, // 14 MDMCFG0  *F8    b9    ChannelSpace: 350kHz
@@ -172,7 +176,7 @@ ccInitChip(uint8_t *cfg)
 #endif
 
 #ifdef ARM
-  AT91C_BASE_AIC->AIC_IDCR = 1 << AT91C_ID_PIOA;
+  AT91C_BASE_AIC->AIC_IDCR = 1 << CC1100_IN_PIO_ID;
   CC1100_CS_BASE->PIO_PPUER = _BV(CC1100_CS_PIN); 	//Enable pullup
   CC1100_CS_BASE->PIO_OER = _BV(CC1100_CS_PIN);		//Enable output
   CC1100_CS_BASE->PIO_PER = _BV(CC1100_CS_PIN);		//Enable PIO control
@@ -286,7 +290,7 @@ ccTX(void)
 {
   uint8_t cnt = 0xff;
 #ifdef ARM
-  AT91C_BASE_AIC->AIC_IDCR = 1 << AT91C_ID_PIOA;
+  AT91C_BASE_AIC->AIC_IDCR = 1 << CC1100_IN_PIO_ID;
 #else
   EIMSK  &= ~_BV(CC1100_INT);
 #endif
@@ -308,7 +312,7 @@ ccRX(void)
         (ccStrobe(CC1100_SRX) & CC1100_STATUS_STATE_BM) != CC1100_STATE_RX)
     my_delay_us(10);
 #ifdef ARM
-	AT91C_BASE_AIC->AIC_IECR = 1 << AT91C_ID_PIOA;
+    AT91C_BASE_AIC->AIC_IECR = 1 << CC1100_IN_PIO_ID;
 #else
   EIMSK |= _BV(CC1100_INT);
 #endif
@@ -319,9 +323,15 @@ ccRX(void)
 void
 ccreg(char *in)
 {
-  uint8_t hb, out;
+  uint8_t hb, out, addr;
 
-  if(fromhex(in+1, &hb, 1)) {
+  if(in[1] == 'w' && fromhex(in+2, &addr, 1) && fromhex(in+4, &hb, 1)) {
+    cc1100_writeReg(addr, hb);
+    ccStrobe( CC1100_SCAL );
+    ccRX();
+    DH2(addr); DH2(hb); DNL();
+
+  } else if(fromhex(in+1, &hb, 1)) {
 
     if(hb == 0x99) {
       for(uint8_t i = 0; i < 0x30; i++) {

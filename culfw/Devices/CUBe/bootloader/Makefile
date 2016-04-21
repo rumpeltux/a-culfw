@@ -18,33 +18,33 @@
 #####
 ###############################################################
 
-ARMBASE = F:/Tools/GNU_Tools_ARM_Embedded/4.8
+#ARMBASE = F:/Tools/GNU_Tools_ARM_Embedded/4.8
 
 INCLUDEPATH = $(ARMBASE)/arm-none-eabi/include
 LIBPATH = $(ARMBASE)/arm-none-eabi/lib
-ARMPATH = $(ARMBASE)/bin
+#ARMPATH = $(ARMBASE)/bin
 TOOLPREFIX = arm-none-eabi-
 OPENOCDPATH = F:\Tools\OpenOCD
 OPENOCD = $(OPENOCDPATH)\openocd.exe -f $(OPENOCDPATH)\target\sam7x256.cfg -f $(OPENOCDPATH)\interface\uniprog.cfg
 
 GENDEPFLAGS = -MMD -MP -MF .dep/$(@F).d
-
+	
 ###############################################################
 #####
 ##### Compiler, Linker and Tools
 #####
 ###############################################################
 
-CC = $(ARMPATH)/$(TOOLPREFIX)gcc
-AS = $(ARMPATH)/$(TOOLPREFIX)gcc
-LD = $(ARMPATH)/$(TOOLPREFIX)gcc
-OC = $(ARMPATH)/$(TOOLPREFIX)objcopy
-OD = $(ARMPATH)/$(TOOLPREFIX)objdump
-SIZE = $(ARMPATH)/$(TOOLPREFIX)size
+CC = $(ARMPATH)$(TOOLPREFIX)gcc
+AS = $(ARMPATH)$(TOOLPREFIX)gcc
+LD = $(ARMPATH)$(TOOLPREFIX)gcc
+OC = $(ARMPATH)$(TOOLPREFIX)objcopy
+OD = $(ARMPATH)$(TOOLPREFIX)objdump
+SIZE = $(ARMPATH)$(TOOLPREFIX)size
 
 CPUFLAGS = -mcpu=arm7tdmi-s
 OPTFLAGS = -Os
-CFLAGS = -Wall -mlong-calls -ffunction-sections -std=c99 -Dflash -DTRACE_LEVEL=0 -D$(OUTPUT) -g $(GENDEPFLAGS)
+CFLAGS = -Wall -mlong-calls -ffunction-sections -std=c99 -Dflash -DTRACE_LEVEL=0 -DDBGU_UNIT_IN -D$(OUTPUT) -g $(GENDEPFLAGS)
 INC = -I. -I../ -I../../../at91lib -I../../../clib -I../../../at91lib/usb -I$(INCLUDEPATH)
 ASFLAGS = -g $(OPTFLAGS) -I. -I../ -I../../../at91lib -D__ASSEMBLY__ -Dflash
 LDFLAGS = -g -nostartfiles -Wl,--gc-sections -T"$(OUTPUT)_flash.lds"  -Xlinker -Map=$(OUTPUT).map
@@ -90,7 +90,7 @@ $(eval $(call expand_dir,))
 
 OBJS := $(patsubst %.S,%.o,$(ALLSRCS:%.c=%.o)) $(ALLTHUMBSRCS:.c=.thumb.o)
 
-all: $(OUTPUT).bin $(OUTPUT).hex
+all: $(OUTPUT).bin
 	$(SIZE) $(OUTPUT).elf
 		
 %.bin: %.elf

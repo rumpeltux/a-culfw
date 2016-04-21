@@ -52,6 +52,8 @@
 #include "uip_arp.h"
 #include "fncollection.h"
 
+#include "led.h"
+
 //#include "network.h"
 
 
@@ -79,6 +81,7 @@ static Dm9161 gDm9161;
 
 static struct uip_eth_addr MacAddress;
 
+static int  linkstate = 0;
 //-----------------------------------------------------------------------------
 /// Emac interrupt handler
 //-----------------------------------------------------------------------------
@@ -92,7 +95,6 @@ void
 network_init(void)
 {
     Dm9161       *pDm = &gDm9161;
-    unsigned int errCount = 0;
 
     MacAddress.addr[0] = erb(EE_MAC_ADDR+0);
     MacAddress.addr[1] = erb(EE_MAC_ADDR+1);
@@ -132,20 +134,6 @@ network_init(void)
         return;
     }
 
-    // Auto Negotiate
-    if (!DM9161_AutoNegotiate(pDm)) {
-
-    	TRACE_INFO("P: Auto Negotiate ERROR!\n\r");
-        return;
-    }
-
-    while( DM9161_GetLinkSpeed(pDm, 1) == 0 ) {
-
-        errCount++;
-    }
-    TRACE_INFO("P: Link detected\n\r");
-
-
 }
 
 //-----------------------------------------------------------------------------
@@ -155,10 +143,14 @@ unsigned int
 network_read(void)
 {
     unsigned int pkt_len = 0;
-    if( EMAC_RX_OK != EMAC_Poll( (unsigned char*)uip_buf,
-                                  UIP_CONF_BUFFER_SIZE,
-                                  &pkt_len) ) {
-
+    unsigned char error = EMAC_Poll( (unsigned char*)uip_buf, UIP_CONF_BUFFER_SIZE, &pkt_len);
+    if (error == EMAC_RX_FRAME_SIZE_TOO_SMALL)
+    {
+        EMAC_Discard_Fragments();
+        pkt_len = 0;
+    }
+    else if(error != EMAC_RX_OK) 
+    {
         pkt_len = 0;
     }
 
@@ -199,31 +191,45 @@ void network_set_led(uint16_t led) {
 
 void ethernet_process(void) {
 
-     uip_len = network_read();
 
-     if(uip_len > 0) {
+	if(linkstate == 0) {
+		Dm9161       *pDm = &gDm9161;
+		if( DM9161_GetLinkSpeed(pDm, 1) != 0 ) {
+
+			TRACE_INFO("P: Link detected\n\r");
+			linkstate=1;
+			LED2_ON();
+			// Auto Negotiate
+			if (!DM9161_AutoNegotiate(pDm)) {
+
+				TRACE_INFO("P: Auto Negotiate ERROR!\n\r");
+				return;
+			}
+		}
+	} else {
 
 
-//    if(eth_debug > 1)
-//      dumppkt();
+		uip_len = network_read();
 
-	  if(BUF->type == htons(UIP_ETHTYPE_IP)){
-	       uip_arp_ipin();
-	       uip_input();
-	       if(uip_len > 0) {
-		    uip_arp_out();
-		    network_send();
-	       }
+		if(uip_len > 0) {
 
-	  } else if(BUF->type == htons(UIP_ETHTYPE_ARP)){
+			if(BUF->type == htons(UIP_ETHTYPE_IP)){
+				uip_arp_ipin();
+				uip_input();
+				if(uip_len > 0) {
+					uip_arp_out();
+					network_send();
+				}
 
-	       uip_arp_arpin();
-	       if(uip_len > 0){
-		    network_send();
-	       }
-	  }
+			} else if(BUF->type == htons(UIP_ETHTYPE_ARP)){
 
-     }
+				uip_arp_arpin();
+				if(uip_len > 0){
+					network_send();
+				}
+			}
+		}
+	}
 
 }
 

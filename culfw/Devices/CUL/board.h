@@ -1,7 +1,6 @@
 #ifndef _BOARD_H
 #define _BOARD_H
 
-
 // Feature definitions
 #define BOARD_ID_STR            "CUL868"
 #define BOARD_ID_USTR           L"CUL868"
@@ -18,6 +17,10 @@
 #define HAS_CC1101_RX_PLL_LOCK_CHECK_TASK_WAIT	// PROGMEM: 118b
 #define HAS_CC1101_PLL_LOCK_CHECK_MSG		// PROGMEM:  22b
 #define HAS_CC1101_PLL_LOCK_CHECK_MSG_SW	// PROGMEM:  22b
+
+#if defined(CUL_V3_ZWAVE)
+#  define CUL_V3
+#endif
 
 #if defined(CUL_V3) || defined(CUL_V4)
 #  define HAS_FHT_8v                    // PROGMEM:  586b  RAM: 23b
@@ -43,9 +46,9 @@
 #    define HAS_TCM97001
 #    define HAS_IT
 #    define HAS_HOMEEASY
-#    define HAS_OREGON3
+#    define HAS_MANCHESTER
 #    define HAS_BELFOX
-#    define DEBUG_SYNC
+#    define HAS_REVOLT
 #  endif
 
 #if defined(_868MHZ)
@@ -59,18 +62,28 @@
 #endif
 
 #if defined(CUL_V4)
+#  define HAS_ZWAVE                     // PROGMEM:  882
 #  define TTY_BUFSIZE           64      // RAM: TTY_BUFSIZE*4
 #endif
 
 #if defined(CUL_V3)
 #  define TTY_BUFSIZE          128      // RAM: TTY_BUFSIZE*4
 #if defined(_868MHZ)
-#  define HAS_MBUS
-#  define MBUS_NO_TX                    // MBUS TX eats up lots of memory, OFF by default
-#  define OFF_LACROSSE_HMS_EMU          // if you like HMS emulation for LaCrosse temp devices
+#  define HAS_MBUS                      // PROGMEM: 2536
+#  define MBUS_NO_TX                       // PROGMEM:  962
+#  define HAS_RFNATIVE                  // PROGMEM:  580
+//#  define LACROSSE_HMS_EMU              // PROGMEM: 2206
+#  define HAS_KOPP_FC                   // PROGMEM: 3370
 #endif
 #endif
 
+
+#if defined(CUL_V3_ZWAVE)
+#  define HAS_ZWAVE                     // PROGMEM:  882
+#  undef HAS_MBUS
+#  undef HAS_KOPP_FC
+#  undef HAS_RFNATIVE
+#endif
 
 
 #ifdef CUL_V2

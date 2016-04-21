@@ -24,13 +24,13 @@ SRC =           CUL.c\
 		../../clib/rf_moritz.c                               \
 		../../clib/rf_rwe.c                                  \
 		../../clib/rf_native.c                               \
+		../../clib/rf_zwave.c                                \
 		../../clib/intertechno.c                             \
 		../../clib/rf_receive_it.c                           \
 		../../clib/rf_receive_tx3.c                          \
 		../../clib/rf_receive_revolt.c                       \
 		../../clib/rf_receive_esa.c                          \
 		../../clib/rf_receive_hms.c                          \
-		../../clib/rf_receive_oregon.c                       \
 		../../clib/helper.c                                  \
 		../../clib/somfy_rts.c				   				 \
 		../../clib/kopp-fc.c				   				 \
@@ -124,6 +124,7 @@ all:
 	make TARGET=CUL_V3 FREQUENCE=_868MHZ MCU=atmega32u4 mostly_clean build size
 	make TARGET=CUL_V4 FREQUENCE=_433MHZ MCU=atmega32u2 mostly_clean build size
 	make TARGET=CUL_V4 FREQUENCE=_868MHZ MCU=atmega32u2 mostly_clean build size
+	make TARGET=CUL_V3_ZWAVE FREQUENCE=_868MHZ MCU=atmega32u4 mostly_clean build size
 
 build: elf hex eep lss sym
 

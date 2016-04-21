@@ -18,11 +18,11 @@
 #####
 ###############################################################
 
-ARMBASE = G:/Tools/GNU_Tools_ARM_Embedded/4.8
+#ARMBASE = G:/Tools/GNU_Tools_ARM_Embedded/4.8
 
 INCLUDEPATH = $(ARMBASE)/arm-none-eabi/include
 LIBPATH = $(ARMBASE)/arm-none-eabi/lib
-ARMPATH = $(ARMBASE)/bin
+#ARMPATH = $(ARMBASE)/bin
 TOOLPREFIX = arm-none-eabi-
 OPENOCDPATH = F:\Tools\OpenOCD
 OPENOCD = $(OPENOCDPATH)\openocd.exe -f $(OPENOCDPATH)\target\sam7x256.cfg -f $(OPENOCDPATH)\interface\uniprog.cfg
@@ -35,16 +35,16 @@ GENDEPFLAGS = -MMD -MP -MF .dep/$(@F).d
 #####
 ###############################################################
 
-CC = $(ARMPATH)/$(TOOLPREFIX)gcc
-AS = $(ARMPATH)/$(TOOLPREFIX)gcc
-LD = $(ARMPATH)/$(TOOLPREFIX)gcc
-OC = $(ARMPATH)/$(TOOLPREFIX)objcopy
-OD = $(ARMPATH)/$(TOOLPREFIX)objdump
-SIZE = $(ARMPATH)/$(TOOLPREFIX)size
+CC = $(ARMPATH)$(TOOLPREFIX)gcc
+AS = $(ARMPATH)$(TOOLPREFIX)gcc
+LD = $(ARMPATH)$(TOOLPREFIX)gcc
+OC = $(ARMPATH)$(TOOLPREFIX)objcopy
+OD = $(ARMPATH)$(TOOLPREFIX)objdump
+SIZE = $(ARMPATH)$(TOOLPREFIX)size
 
 CPUFLAGS = -mcpu=arm7tdmi-s
 OPTFLAGS = -Os
-DEBUGFLAGS = -DTRACE_LEVEL=4
+DEBUGFLAGS = -DTRACE_LEVEL=4 -DDBGU_UNIT_IN
 CFLAGS = -Wall -Wno-strict-aliasing -Wno-unused-but-set-variable -mlong-calls -ffunction-sections -std=c99 -Dflash -D$(OUTPUT) $(DEBUGFLAGS) -g $(GENDEPFLAGS)
 INC = -I. -I../.. -I../../at91lib -I../../at91lib/usb -I../../clib -I../../at91lib/avr -I../../avr-uip/uip -I../../avr-uip -I$(INCLUDEPATH)
 ASFLAGS = -g $(OPTFLAGS) -I. -I../../at91lib -D__ASSEMBLY__ -Dflash
@@ -62,7 +62,7 @@ COMPILE = $(CC) $(CPUFLAGS) $(CFLAGS) $(OPTFLAGS) $(INC)
 ##### output
 #####
 ###############################################################
-#OUTPUT = CUBE
+OUTPUT = CUBE_BL
 
 ###############################################################
 #####
@@ -92,7 +92,7 @@ $(eval $(call expand_dir,))
 
 OBJS := $(patsubst %.S,%.o,$(ALLSRCS:%.c=%.o)) $(ALLTHUMBSRCS:.c=.thumb.o)
 
-target:	$(OUTPUT).bin $(OUTPUT).hex
+target:	$(OUTPUT).bin
 	$(SIZE) $(OUTPUT).elf
 
 CUBE:
@@ -102,7 +102,8 @@ CUBE_BL:
 	make OUTPUT=CUBE_BL target
 	
 all:
-	make OUTPUT=CUBE clean2 target
+	make clean2
+	make OUTPUT=CUBE target
 	make OUTPUT=CUBE_BL target
 	make clean3
 
@@ -138,7 +139,7 @@ clean:
 	-rm -Rf obj/*
 	-rm -Rf .dep/*
 	-rm -Rf .dep
-	-rm -f $(OBJS) *.elf *.bin *.hex *.map *~
+	-rm -f $(OBJS) *.elf *.bin *.hex *.map *~ ../../at91lib/*.o 
 
 clean2:
 	-rm -Rf obj/*

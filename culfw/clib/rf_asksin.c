@@ -7,6 +7,7 @@
 #include "rf_receive.h"
 #include "display.h"
 #include "cc1101_pllcheck.h"
+#include "clock.h"
 
 #include "rf_asksin.h"
 
@@ -100,7 +101,7 @@ rf_asksin_init(void)
 
 #ifdef ARM
 #ifndef CC_ID
-  AT91C_BASE_AIC->AIC_IDCR = 1 << AT91C_ID_PIOA;	// disable INT - we'll poll...
+  AT91C_BASE_AIC->AIC_IDCR = 1 << CC1100_IN_PIO_ID;	// disable INT - we'll poll...
 #endif
 
   CC1100_CS_BASE->PIO_PPUER = _BV(CC1100_CS_PIN); 		//Enable pullup
@@ -260,6 +261,7 @@ asksin_send(char *in)
   uint8_t msg[MAX_ASKSIN_MSG];
   uint8_t ctl;
   uint8_t l;
+  uint32_t ts1, ts2;
 
   uint8_t hblen = fromhex(in+1, msg, MAX_ASKSIN_MSG-1);
 
@@ -285,8 +287,17 @@ asksin_send(char *in)
   msg[l] = msg[l] ^ ctl;
 
   // enable TX, wait for CCA
+  get_timestamp(&ts1);
   do {
     CCSTROBE(CC1100_STX);
+    if (CC1100_READREG(CC1100_MARCSTATE) != MARCSTATE_TX) {
+      get_timestamp(&ts2);
+      if (((ts2 > ts1) && (ts2 - ts1 > ASKSIN_WAIT_TICKS_CCA)) ||
+          ((ts2 < ts1) && (ts1 + ASKSIN_WAIT_TICKS_CCA < ts2))) {
+        DS_P(PSTR("ERR:CCA\r\n"));
+        goto out;
+      }
+    }
   } while (CC1100_READREG(CC1100_MARCSTATE) != MARCSTATE_TX);
 
   if (ctl & (1 << 4)) { // BURST-bit set?
@@ -311,6 +322,7 @@ asksin_send(char *in)
   while(CC1100_READREG( CC1100_MARCSTATE ) == MARCSTATE_TX)
     ;
 
+out:
   if (CC1100_READREG( CC1100_MARCSTATE ) == MARCSTATE_TXFIFO_UNDERFLOW) {
       CCSTROBE( CC1100_SFTX  );
       CCSTROBE( CC1100_SIDLE );
