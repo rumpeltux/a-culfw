@@ -8,7 +8,11 @@
 #include "rf_zwave.h"
 #include "cc1100.h"
 
-#define MAX_ZWAVE_MSG 64
+#ifdef CUL_V4
+#define MAX_ZWAVE_MSG 64        // 1024k SRAM is not enough: no SEC for CUL_V4
+#else
+#define MAX_ZWAVE_MSG (8+158+2) // 158 == aMacMaxMSDUSizeR3 (G.9959)
+#endif
 
 void zwave_doSend(uint8_t *msg, uint8_t hblen);
 
@@ -147,8 +151,10 @@ void
 zccRX(void)
 {
   ccRX();
-#ifdef ARM
+#ifdef SAM7
   AT91C_BASE_AIC->AIC_IDCR = 1 << CC1100_IN_PIO_ID; // disable INT - we'll poll...
+#elif defined STM32
+  hal_enable_CC_GDOin_int(FALSE); // disable INT - we'll poll...
 #else
   EIMSK &= ~_BV(CC1100_INT);                 // disable INT - we'll poll...
 #endif
@@ -159,10 +165,12 @@ void
 rf_zwave_init(void)
 {
 
-#ifdef ARM
+#ifdef SAM7
   CC1100_CS_BASE->PIO_PPUER = _BV(CC1100_CS_PIN);     //Enable pullup
   CC1100_CS_BASE->PIO_OER = _BV(CC1100_CS_PIN);     //Enable output
   CC1100_CS_BASE->PIO_PER = _BV(CC1100_CS_PIN);     //Enable PIO control
+#elif defined STM32
+	hal_CC_GDO_init(INIT_MODE_OUT_CS_IN);
 #else
   SET_BIT( CC1100_CS_DDR, CC1100_CS_PIN );
 #endif
@@ -316,8 +324,9 @@ rf_zwave_task(void)
   if(zwave_on=='r' && isOk && (msg[5]&3) == 3 && zwave_ackState) // got ACK
     zwave_ackState = 0;
 
-  if(zwave_on=='r' && isOk && (msg[5]&0x40)) { // need to ACK
-    my_delay_ms(10); // unsure
+  if(zwave_on=='r' && isOk && (msg[5]&0x40) &&  // ackReq
+     ((msg[5]&0x80) == 0)) {                    // not routed
+    my_delay_ms(10); // Tested with 1,5,10,15
 
     msg[8] = msg[4]; // src -> target
     msg[4] = zwave_hcid[4]; // src == ctrlId

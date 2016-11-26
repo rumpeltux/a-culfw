@@ -9,6 +9,9 @@
 #include <stdio.h>
 #include <util/parity.h>
 #include <string.h>
+#ifdef ARM
+#include <hal.h>
+#endif
 
 #include "board.h"
 
@@ -108,11 +111,14 @@ it_tunein(void)
 {
 		  int8_t i;
 		  
-#ifdef ARM
+#ifdef SAM7
   		AT91C_BASE_AIC->AIC_IDCR = 1 << AT91C_ID_PIOA;	// disable INT - we'll poll...
   		AT91C_BASE_PIOA->PIO_PPUER = _BV(CC1100_CS_PIN); 		//Enable pullup
   		AT91C_BASE_PIOA->PIO_OER = _BV(CC1100_CS_PIN);			//Enable output
   		AT91C_BASE_PIOA->PIO_PER = _BV(CC1100_CS_PIN);			//Enable PIO control
+#elif defined STM32
+  		hal_CC_GDO_init(INIT_MODE_OUT_CS_IN);
+  	  hal_enable_CC_GDOin_int(FALSE); // disable INT - we'll poll...
 #else
 		  EIMSK &= ~_BV(CC1100_INT);
   		SET_BIT( CC1100_CS_DDR, CC1100_CS_PIN ); // CS as output
@@ -177,6 +183,18 @@ send_IT_bit(uint8_t bit)
   	my_delay_us(it_interval);
  	  CC1100_CLEAR_OUT;       // Low
 	  my_delay_us(it_interval * 3);
+// Quad-State
+  } else if (bit == 3) {
+      CC1100_SET_OUT;         // High
+      my_delay_us(it_interval * 3);
+      CC1100_CLEAR_OUT;       // Low
+      my_delay_us(it_interval);
+      
+      CC1100_SET_OUT;         // High
+      my_delay_us(it_interval);
+      CC1100_CLEAR_OUT;       // Low
+      my_delay_us(it_interval * 3);
+// Quad-State
   } else {
   	CC1100_SET_OUT;         // High
   	my_delay_us(it_interval);
@@ -329,7 +347,7 @@ it_send (char *in, uint8_t datatype) {
       mode = 1; // IT V3
       
     }
-		for(i = 0; i < it_repetition; i++)  {
+    for(i = 0; i < it_repetition; i++)  {
       if (datatype == DATATYPE_IT) {
         if (mode == 1) {    
           send_IT_sync_V3();  
@@ -357,8 +375,8 @@ it_send (char *in, uint8_t datatype) {
         startCount = 2;
       } 
 #endif
-		  for(j = startCount; j < sizeOfPackage; j++)  {
-			  if(in[j+1] == '0') {
+      for(j = startCount; j < sizeOfPackage; j++)  {
+	if(in[j+1] == '0') {
           if (datatype == DATATYPE_IT) {
             if (mode == 1) {
 					    send_IT_bit_V3(0);
@@ -370,7 +388,7 @@ it_send (char *in, uint8_t datatype) {
             send_IT_bit_HE(0, datatype);
 #endif
           }
-				} else if (in[j+1] == '1') {
+	} else if (in[j+1] == '1') {
           if (datatype == DATATYPE_IT) {
             if (mode == 1) {
 					    send_IT_bit_V3(1);
@@ -384,14 +402,23 @@ it_send (char *in, uint8_t datatype) {
           }
         } else if (in[j+1] == '2') {
           send_IT_bit_V3(2);
-				} else {
+// Quad
+        } else if (in[j+1] == '3') {
           if (mode == 1) {
-					  send_IT_bit_V3(3);
-				  } else {
-					  send_IT_bit(2);
-				  }
-			  }
-			}
+            // Not supported
+	    //send_IT_bit_V3(3);
+	  } else {
+	    send_IT_bit(3);
+	  }
+// Quad
+	} else {
+          if (mode == 1) {
+	    send_IT_bit_V3(3);
+	  } else {
+	    send_IT_bit(2);
+	  }
+	}
+      }
       //if (mode == 1) {  
       //  send_IT_sync_V3();
       //}

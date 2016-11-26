@@ -4,6 +4,7 @@ before_script:
 build:a-culfw:
   stage: build
   script:
+    - export PATH=/opt/gcc-arm-none-eabi-5_4-2016q3/bin:$PATH
     - cd culfw
     - BUILD_TIMESTAMP=`date +'%Y-%m-%d_%H-%M-%S'`
     - sed -i "s/BUILD_DATE.*/BUILD_DATE \"$BUILD_TIMESTAMP\"/" version.h
@@ -32,7 +33,7 @@ deploy-job:
   script:
     - echo "Push to mediafire"
     - cd culfw/Devices
-    - ZIPNAME=a-culfw_build_${CI_BUILD_ID}_${CI_BUILD_REF_NAME}.zip
+    - ZIPNAME=a-culfw_${CI_BUILD_REF_NAME}_build_${CI_BUILD_ID}.zip
     - find . -name "*.hex" -exec zip -u "../../${ZIPNAME}" {} \;
     - find . -name "*.bin" -exec zip -u "../../${ZIPNAME}" {} \;
     - find . -name "README*" -exec zip -u "../../${ZIPNAME}" {} \;

@@ -51,9 +51,12 @@
 #include "rf_mbus.h"
 #endif
 
-#ifdef ARM
+#ifdef SAM7
 #include <aic/aic.h>
 void ISR_Pio();
+#elif defined STM32
+#include <hal.h>
+#include "stm32f1xx_it.h"
 #endif
 //////////////////////////
 // With a CUL measured RF timings, in us, high/low sum
@@ -97,7 +100,7 @@ void
 tx_init(void)
 {
 
-#ifdef ARM
+#ifdef SAM7
 
   AT91C_BASE_PMC->PMC_PCER = (1 << AT91C_ID_PIOA);
 #ifdef CUBE
@@ -115,7 +118,9 @@ tx_init(void)
   CC1100_IN_BASE->PIO_PER = _BV(CC1100_IN_PIN);     //Enable PIO control
   AIC_ConfigureIT(CC1100_IN_PIO_ID, AT91C_AIC_PRIOR_HIGHEST, ISR_Pio);
 
-
+#elif defined STM32
+  hal_CC_GDO_init(INIT_MODE_OUT_CS_IN);
+  hal_enable_CC_GDOin_int(TRUE);
 #else
   SET_BIT  ( CC1100_OUT_DDR,  CC1100_OUT_PIN);
   CLEAR_BIT( CC1100_OUT_PORT, CC1100_OUT_PIN);
@@ -274,8 +279,14 @@ analyze(bucket_t *b, uint8_t t, uint8_t *oby)
  * with the same message. Otherwise the package are ignored.
  */
 void checkForRepeatedPackage(uint8_t *datatype, bucket_t *b) {
-#if defined (HAS_IT) || defined (HAS_TCM97001)
+#if defined (HAS_IT) && defined (HAS_TCM97001)
   if ((*datatype == TYPE_IT) || (*datatype == TYPE_TCM97001)) { 
+#elif defined (HAS_TCM97001)
+  if (*datatype == TYPE_TCM97001) {
+#elif defined (HAS_IT)
+  if (*datatype == TYPE_IT) {
+#endif
+#if defined (HAS_IT) || defined (HAS_TCM97001)
       if (packetCheckValues.isrep == 1 && packetCheckValues.isnotrep == 0) { 
         packetCheckValues.isnotrep = 1;
         packetCheckValues.packageOK = 1;
@@ -322,6 +333,7 @@ RfAnalyze_Task(void)
   uint8_t oby = 0;
 
   if(lowtime) {
+#ifndef NO_RF_DEBUG
     if(tx_report & REP_LCDMON) {
 #ifdef HAS_LCD
       lcd_txmon(hightime, lowtime);
@@ -341,6 +353,7 @@ RfAnalyze_Task(void)
       DC('r'); if(tx_report & REP_BINTIME) DC(hightime);
       DC('f'); if(tx_report & REP_BINTIME) DC(lowtime);
     }
+#endif // NO_RF_DEBUG
     lowtime = 0;
   }
 
@@ -470,6 +483,11 @@ RfAnalyze_Task(void)
 
     checkForRepeatedPackage(&datatype, b);
 
+#if defined(HAS_RF_ROUTER) && defined(HAS_FHT_80b)
+    if(datatype == TYPE_FHT && rf_router_target && !fht_hc0) // Forum #50756
+      packetCheckValues.packageOK = 0;
+#endif
+
     if(packetCheckValues.packageOK) {
       DC(datatype);
 #ifdef HAS_HOMEEASY
@@ -504,7 +522,9 @@ RfAnalyze_Task(void)
 
   }
 
+#ifndef NO_RF_DEBUG
   if(tx_report & REP_BITS) {
+
     DC('p');
     DU(b->state,        2);
     DU(b->zero.hightime*16, 5);
@@ -536,7 +556,9 @@ RfAnalyze_Task(void)
     for(uint8_t i=0; i < b->byteidx; i++)
        DH2(b->data[i]);
     DNL();
+
   }
+#endif
 
   b->state = STATE_RESET;
   b->valCount = 0;
@@ -559,8 +581,10 @@ RfAnalyze_Task(void)
 void reset_input(void)
 {
   maxLevel=0;
-#ifdef ARM
+#ifdef SAM7
   AT91C_BASE_AIC->AIC_IDCR = 1 << AT91C_ID_TC1;	//Disable Interrupt
+#elif defined STM32
+  hal_enable_CC_timer_int(FALSE);
 #else
   TIMSK1 = 0;
 #endif
@@ -568,8 +592,10 @@ void reset_input(void)
 #if defined (HAS_IT) || defined (HAS_TCM97001)
   packetCheckValues.isnotrep = 0;
 #endif
-#ifdef ARM
+#ifdef SAM7
       	AT91C_BASE_TC1->TC_RC = 0;
+#elif defined STM32
+      	TIM2->ARR = 0xffff;
 #else
         OCR1A = 0;
 #endif
@@ -578,10 +604,12 @@ void reset_input(void)
 //////////////////////////////////////////////////////////////////////
 // Timer Compare Interrupt Handler. If we are called, then there was no
 // data for SILENCE time, and we can put the data to be analysed
-#ifdef ARM
+#ifdef SAM7
 void ISR_Timer1() {
 	// Clear status bit to acknowledge interrupt
 	AT91C_BASE_TC1->TC_SR;
+#elif defined STM32
+void TIM2_PeriodElapsedCallback() {
 #else
 ISR(TIMER1_COMPA_vect)
 {
@@ -589,13 +617,21 @@ ISR(TIMER1_COMPA_vect)
   uint16_t tmp;
 #endif
 #endif
-#ifdef ARM
+
+#ifdef SAM7
   AT91C_BASE_AIC->AIC_IDCR = 1<< AT91C_ID_TC1;	//Disable Interrupt
 
 #ifdef LONG_PULSE
   AT91C_BASE_TC1->TC_RC = TWRAP/8*3;    // Wrap Timer
   AT91C_BASE_TC1->TC_CMR |= AT91C_TC_CPCTRG;
 #endif
+
+#elif defined STM32
+  hal_enable_CC_timer_int(FALSE);       //Disable Interrupt
+#ifdef LONG_PULSE
+  TIM2->ARR = TWRAP;
+#endif
+
 #else
   TIMSK1 = 0;                           // Disable "us"
 #ifdef LONG_PULSE
@@ -604,8 +640,10 @@ ISR(TIMER1_COMPA_vect)
   TCNT1=tmp;                            // reinitialize timer to measure times > SILENCE
 #endif
 #endif
+#ifndef NO_RF_DEBUG
   if(tx_report & REP_MONITOR)
     DC('.');
+#endif
 
   if(bucket_array[bucket_in].state < STATE_COLLECT ||
      bucket_array[bucket_in].byteidx < 2) {    // false alarm
@@ -616,8 +654,10 @@ ISR(TIMER1_COMPA_vect)
 
   if(bucket_nrused+1 == RCV_BUCKETS) {   // each bucket is full: reuse the last
 
+#ifndef NO_RF_DEBUG
     if(tx_report & REP_BITS)
       DS_P(PSTR("BOVF\r\n"));            // Bucket overflow
+#endif
 
     reset_input();
 
@@ -700,7 +740,7 @@ static void calcOcrValue(bucket_t *b, pulse_t *hightime, pulse_t *lowtime, bool 
       maxLevel = *lowtime;
     }
     if (b->valCount == 7 && maxLevel != 0) {
-#ifdef ARM
+#ifdef SAM7
         uint32_t ocrVal = 0;
 #else
         uint16_t ocrVal = 0;
@@ -710,9 +750,11 @@ static void calcOcrValue(bucket_t *b, pulse_t *hightime, pulse_t *lowtime, bool 
         } else {
           ocrVal = (((b->syncbit.lowtime - maxLevel)>>2)+maxLevel);
         }    
-#ifdef ARM
+#ifdef SAM7
         ocrVal = ((ocrVal * 100) / 266);
         AT91C_BASE_TC1->TC_RC = ocrVal * 16;
+#elif defined STM32
+        TIM2->ARR = ocrVal * 16;
 #else
         OCR1A = ocrVal * 16;
 #endif
@@ -728,11 +770,13 @@ static void calcOcrValue(bucket_t *b, pulse_t *hightime, pulse_t *lowtime, bool 
 
 //////////////////////////////////////////////////////////////////////
 // "Edge-Detected" Interrupt Handler
-#ifdef ARM
+#ifdef SAM7
 void ISR_Pio() {
 	// Read PIO controller status
 	CC1100_IN_BASE->PIO_ISR;
 
+#elif defined STM32
+	void CC1100_in_callback() {
 #else
 ISR(CC1100_INTVECT)
 {
@@ -751,19 +795,26 @@ ISR(CC1100_INTVECT)
   }
 #endif
 #ifdef LONG_PULSE
-  #ifdef ARM
+  #ifdef SAM7
   uint16_t c = AT91C_BASE_TC1->TC_CV / 6;   // catch the time and make it smaller
+  #elif defined STM32
+  uint16_t c = (TIM2->CNT)>>4;;
   #else
   uint16_t c = (TCNT1>>4);               // catch the time and make it smaller
   #endif
 #else
-  #ifdef ARM
+  #ifdef SAM7
   uint8_t c = AT91C_BASE_TC1->TC_CV / 6;   // catch the time and make it smaller
+  #elif defined STM32
+  uint8_t c = (TIM2->CNT)>>4;
   #else
   uint8_t c = (TCNT1>>4);               // catch the time and make it smaller
   #endif
 #endif
 
+
+  if(c)
+    LED_TOGGLE();
 
   bucket_t *b = bucket_array+bucket_in; // where to fill in the bit
 
@@ -806,8 +857,10 @@ ISR(CC1100_INTVECT)
 #endif
     )) {
       addbit(b, 1);
-#ifdef ARM
+#ifdef SAM7
       AT91C_BASE_TC1->TC_CCR = AT91C_TC_CLKEN | AT91C_TC_SWTRG;		// restart timer
+#elif defined STM32
+      TIM2->CNT = 0;
 #else
       TCNT1 = 0;
 #endif
@@ -847,8 +900,10 @@ ISR(CC1100_INTVECT)
 
   lowtime = c-hightime;
 
-#ifdef ARM
+#ifdef SAM7
   AT91C_BASE_TC1->TC_CCR = AT91C_TC_CLKEN | AT91C_TC_SWTRG;		// restart timer
+#elif defined STM32
+  TIM2->CNT=0;
 #else
   TCNT1 = 0;                          // restart timer
 #endif
@@ -948,24 +1003,25 @@ retry_sync:
 	   	  // sync bit received
           b->state = STATE_SYNC_PACKAGE;
           b->sync  = 1;
-	  #ifdef ARM
-         	//AT91C_BASE_TC1->TC_RC = 825;
+	    #ifdef SAM7
           uint32_t ocrVal = 0;
           ocrVal = ((lowtime * 100) / 266);
           AT91C_BASE_TC1->TC_RC = (ocrVal - 16) * 16;
-
-          //AT91C_BASE_TC1->TC_RC = 1950;
+      #elif defined STM32
+          TIM2->ARR = (lowtime - 16) * 16; //End of message
       #else
           OCR1A = (lowtime - 16) * 16; //End of message
          	//OCR1A = 2200; // end of message
           //OCR1A = b->syncbit.lowtime*16 - 1000;
       #endif
-      #ifdef ARM
+      #ifdef SAM7
           AT91C_BASE_TC1->TC_SR;
 	      #ifdef LONG_PULSE
           AT91C_BASE_TC1->TC_CMR &= ~(AT91C_TC_CPCTRG);
 	      #endif
           AT91C_BASE_AIC->AIC_IECR= 1 << AT91C_ID_TC1;
+      #elif defined STM32
+          hal_enable_CC_timer_int(TRUE);
       #else
           TIMSK1 = _BV(OCIE1A);
       #endif
@@ -1002,17 +1058,21 @@ retry_sync:
             b->state = STATE_SYNC;
             //DC('s');
         }
-        #ifdef ARM
+        #ifdef SAM7
             AT91C_BASE_TC1->TC_RC = SILENCE/8*3;
+        #elif defined STM32
+            TIM2->ARR = SILENCE;
         #else
             OCR1A = SILENCE;
         #endif
-        #ifdef ARM
+        #ifdef SAM7
             AT91C_BASE_TC1->TC_SR;
             #ifdef LONG_PULSE
                 AT91C_BASE_TC1->TC_CMR &= ~(AT91C_TC_CPCTRG);
             #endif
             AT91C_BASE_AIC->AIC_IECR= 1 << AT91C_ID_TC1;
+        #elif defined STM32
+            hal_enable_CC_timer_int(TRUE);
         #else
             TIMSK1 = _BV(OCIE1A);
         #endif
@@ -1031,8 +1091,10 @@ retry_sync:
         b->clockTime = 0;
         b->sync++;
       } else if(b->sync >= 4 ) {          // the one bit at the end of the 0-sync
-#ifdef ARM
+#ifdef SAM7
       	AT91C_BASE_TC1->TC_RC = SILENCE/8*3;
+#elif defined STM32
+      	TIM2->ARR = SILENCE;
 #else
         OCR1A = SILENCE;
 #endif
@@ -1046,8 +1108,10 @@ retry_sync:
               if (b->sync >= 10 && (b->zero.hightime + b->zero.lowtime) < TSCALE(600)) {
           b->state = STATE_ESA;
           //DU(b->sync,         3);
-#ifdef ARM
+#ifdef SAM7
           AT91C_BASE_TC1->TC_RC = 375;
+#elif defined STM32
+          TIM2->ARR = 1000;
 #else
           OCR1A = 1000;
 #endif
@@ -1077,12 +1141,14 @@ retry_sync:
         b->bitidx  = 7;
         b->data[0] = 0;
 
-#ifdef ARM
+#ifdef SAM7
         AT91C_BASE_TC1->TC_SR;
 		#ifdef LONG_PULSE
         AT91C_BASE_TC1->TC_CMR &= ~(AT91C_TC_CPCTRG);
 		#endif
         AT91C_BASE_AIC->AIC_IECR= 1 << AT91C_ID_TC1;
+#elif defined STM32
+        hal_enable_CC_timer_int(TRUE);
 #else
         TIMSK1 = _BV(OCIE1A);             // On timeout analyze the data
 #endif
